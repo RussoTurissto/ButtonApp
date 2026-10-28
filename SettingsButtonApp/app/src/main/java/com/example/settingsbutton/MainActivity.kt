@@ -3,103 +3,112 @@ package com.example.settingsbutton
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.View
 import android.widget.Button
 import android.widget.Toast
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
-    private val cameraRequestCode = 100
-    private val storageRequestCode = 101
-    private var pendingBitmap: Bitmap? = null
+    private lateinit var previewView: PreviewView
+    private lateinit var captureButton: Button
+    private var imageCapture: ImageCapture? = null
+    private var cameraExecutor: ExecutorService? = null
+    private val cameraPermissionRequest = 200
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        findViewById<Button>(R.id.settingsButton).setOnClickListener { openFrontCamera() }
-    }
+        previewView = findViewById(R.id.cameraPreview)
+        captureButton = findViewById(R.id.settingsButton)
+        cameraExecutor = Executors.newSingleThreadExecutor()
+        captureButton.setOnClickListener { takePhoto() }
 
-    private fun openFrontCamera() {
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-            putExtra("android.intent.extras.CAMERA_FACING", 1)
-            putExtra("android.intent.extras.LENS_FACING_FRONT", 1)
-            putExtra("android.intent.extra.USE_FRONT_CAMERA", true)
-        }
-        if (intent.resolveActivity(packageManager) == null) {
-            Toast.makeText(this, "На устройстве нет приложения камеры", Toast.LENGTH_LONG).show()
-            return
-        }
-        try {
-            startActivityForResult(intent, cameraRequestCode)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Не удалось открыть камеру", Toast.LENGTH_LONG).show()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            startCamera()
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), cameraPermissionRequest)
         }
     }
 
-    @Deprecated("Uses the classic camera intent result for compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != cameraRequestCode || resultCode != RESULT_OK) return
-        val bitmap = data?.extras?.get("data") as? Bitmap
-        if (bitmap == null) {
-            Toast.makeText(this, "Камера не вернула фото. Попробуйте ещё раз.", Toast.LENGTH_LONG).show()
-            return
-        }
-        pendingBitmap = bitmap
-        savePhoto()
+    private fun startCamera() {
+        previewView.visibility = View.VISIBLE
+        val providerFuture = ProcessCameraProvider.getInstance(this)
+        providerFuture.addListener({
+            val cameraProvider = providerFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .build()
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageCapture)
+            } catch (_: Exception) {
+                Toast.makeText(this, "Не удалось запустить фронтальную камеру", Toast.LENGTH_LONG).show()
+            }
+        }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun savePhoto() {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), storageRequestCode)
+    private fun takePhoto() {
+        val capture = imageCapture
+        if (capture == null) {
+            Toast.makeText(this, "Камера ещё запускается", Toast.LENGTH_SHORT).show()
             return
         }
-        val bitmap = pendingBitmap ?: return
+        val name = "ButtonApp_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".jpg"
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "ButtonApp_" + System.currentTimeMillis() + ".jpg")
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ButtonApp")
-                put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }
-        try {
-            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            if (uri == null) {
-                Toast.makeText(this, "Не удалось сохранить фото", Toast.LENGTH_LONG).show()
-                return
+        val options = ImageCapture.OutputFileOptions.Builder(
+            contentResolver,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            values
+        ).build()
+        capture.takePicture(options, cameraExecutor!!, object : ImageCapture.OnImageSavedCallback {
+            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Фото сохранено в галерею", Toast.LENGTH_LONG).show()
+                }
             }
-            contentResolver.openOutputStream(uri)?.use { output ->
-                check(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output))
-            } ?: error("Cannot open image output stream")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentResolver.update(uri, ContentValues().apply {
-                    put(MediaStore.Images.Media.IS_PENDING, 0)
-                }, null, null)
+
+            override fun onError(exception: ImageCaptureException) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Не удалось сделать фото: " + exception.message, Toast.LENGTH_LONG).show()
+                }
             }
-            Toast.makeText(this, "Фото сохранено в галерею", Toast.LENGTH_LONG).show()
-        } catch (_: Exception) {
-            Toast.makeText(this, "Не удалось сохранить фото в галерею", Toast.LENGTH_LONG).show()
-        } finally {
-            pendingBitmap = null
+        })
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == cameraPermissionRequest) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) startCamera()
+            else Toast.makeText(this, "Для съёмки необходимо разрешение камеры", Toast.LENGTH_LONG).show()
         }
     }
 
-    @Deprecated("Uses the classic permission callback for compatibility")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == storageRequestCode) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) savePhoto()
-            else {
-                pendingBitmap = null
-                Toast.makeText(this, "Разрешите доступ к хранилищу, чтобы сохранить фото", Toast.LENGTH_LONG).show()
-            }
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor?.shutdown()
     }
 }
