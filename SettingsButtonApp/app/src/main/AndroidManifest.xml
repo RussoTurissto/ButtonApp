@@ -4,7 +4,7 @@
         android:allowBackup="false"
         android:label="Кнопка настроек"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/TransparentButtonTheme">
         <activity
             android:name=".MainActivity"
             android:exported="true">
