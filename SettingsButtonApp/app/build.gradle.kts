@@ -33,6 +33,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation("androidx.core:core:1.15.0")
+    implementation("androidx.core:core-ktx:1.15.0")
     val cameraXVersion = "1.4.2"
     implementation("androidx.camera:camera-core:$cameraXVersion")
     implementation("androidx.camera:camera-camera2:$cameraXVersion")
