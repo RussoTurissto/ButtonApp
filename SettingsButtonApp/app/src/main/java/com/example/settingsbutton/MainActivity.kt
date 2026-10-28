@@ -53,12 +53,13 @@ class MainActivity : Activity() {
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
-            imageCapture = ImageCapture.Builder()
+            val capture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
+            imageCapture = capture
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageCapture)
+                cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, capture)
             } catch (_: Exception) {
                 Toast.makeText(this, "Не удалось запустить фронтальную камеру", Toast.LENGTH_LONG).show()
             }
