@@ -92,9 +92,7 @@ class MainActivity : ComponentActivity() {
         }
         capture.takePicture(options, executor, object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Фото сохранено в галерею", Toast.LENGTH_LONG).show()
-                }
+                // Фото сохраняется без всплывающего уведомления.
             }
 
             override fun onError(exception: ImageCaptureException) {
