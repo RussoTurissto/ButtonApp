@@ -85,7 +85,12 @@ class MainActivity : ComponentActivity() {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             values
         ).build()
-        capture.takePicture(options, cameraExecutor!!, object : ImageCapture.OnImageSavedCallback {
+        val executor = cameraExecutor
+        if (executor == null || executor.isShutdown) {
+            Toast.makeText(this, "Камера недоступна", Toast.LENGTH_LONG).show()
+            return
+        }
+        capture.takePicture(options, executor, object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, "Фото сохранено в галерею", Toast.LENGTH_LONG).show()
@@ -100,7 +105,7 @@ class MainActivity : ComponentActivity() {
         })
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == cameraPermissionRequest) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) startCamera()
