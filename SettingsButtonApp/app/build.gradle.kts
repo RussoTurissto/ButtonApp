@@ -28,6 +28,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+configurations.configureEach {
+    resolutionStrategy.force("androidx.core:core:1.15.0", "androidx.core:core-ktx:1.15.0")
+}
+
 dependencies {
     val cameraXVersion = "1.4.2"
     implementation("androidx.camera:camera-core:$cameraXVersion")
