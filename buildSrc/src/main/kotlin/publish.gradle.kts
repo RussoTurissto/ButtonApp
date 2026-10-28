@@ -39,7 +39,7 @@ publishing {
 
             pom {
                 description.set("A template for Kotlin Android projects")
-                url.set("https://github.com/cortinico/kotlin-android-template/")
+                url.set("https://github.com/russoturissto/buttonapp/")
 
                 licenses {
                     license {
@@ -49,18 +49,18 @@ publishing {
                 }
                 developers {
                     developer {
-                        id.set("cortinico")
-                        name.set("Nicola Corti")
+                        id.set("russoturissto")
+                        name.set("russoturissto")
                     }
                 }
                 scm {
-                    connection.set("scm:git:git://github.com/cortinico/kotlin-android-template.git")
-                    developerConnection.set("scm:git:ssh://github.com/cortinico/kotlin-android-template.git")
-                    url.set("https://github.com/cortinico/kotlin-android-template/")
+                    connection.set("scm:git:git://github.com/russoturissto/buttonapp.git")
+                    developerConnection.set("scm:git:ssh://github.com/russoturissto/buttonapp.git")
+                    url.set("https://github.com/russoturissto/buttonapp/")
                 }
                 issueManagement {
                     system.set("GitHub Issues")
-                    url.set("https://github.com/cortinico/kotlin-android-template/issues")
+                    url.set("https://github.com/russoturissto/buttonapp/issues")
                 }
             }
         }
