@@ -1,7 +1,7 @@
 package com.example.settingsbutton
 
 import android.Manifest
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.os.Build
@@ -23,7 +23,7 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var captureButton: Button
     private var imageCapture: ImageCapture? = null
